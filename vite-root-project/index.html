@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+
+    <!-- get systemjs -->
+    <script src="https://cdn.jsdelivr.net/npm/systemjs@6.8.3/dist/system.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/systemjs@6.8.3/dist/extras/amd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/regenerator-runtime@0.13.7/runtime.min.js"></script>
+    <script type="systemjs-importmap" src="./import-map.json"></script>
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/import-map-overrides/dist/import-map-overrides.js"
+    ></script>
+    <import-map-overrides-full
+      show-when-local-storage="devtools"
+    ></import-map-overrides-full>
+  </head>
+  <body>
+    <script>
+      const origins = ["http://localhost:5173", "http://localhost:9000"];
+
+      function appendReactRefreshScript(origin) {
+        const reactRefreshInteropabilityScript =
+          document.createElement("script");
+        reactRefreshInteropabilityScript.type = "module";
+        reactRefreshInteropabilityScript.textContent = `
+    import RefreshRuntime from '${origin}/@react-refresh';
+    RefreshRuntime.injectIntoGlobalHook(window);
+  `;
+        document.head.appendChild(reactRefreshInteropabilityScript);
+      }
+
+      window.$RefreshReg$ = () => {};
+      window.$RefreshSig$ = () => (type) => type;
+      window.__vite_plugin_react_preamble_installed__ = true;
+
+      origins.forEach((origin) => {
+        appendReactRefreshScript(origin);
+      });
+    </script>
+    <script type="module">
+      (function (global) {
+        const systemJSPrototype = global.System.constructor.prototype;
+
+        const originalCreateScript = systemJSPrototype.createScript;
+        systemJSPrototype.createScript = function () {
+          return Object.assign(originalCreateScript.apply(this, arguments), {
+            type: "module",
+          });
+        };
+
+        // override SystemJS behaviour when dynamically importing
+        const originalInstantiate = systemJSPrototype.instantiate;
+        systemJSPrototype.instantiate = function (url) {
+          const isEsm = url.includes(".ts") || url.includes(".tsx");
+
+          return originalInstantiate.apply(this, arguments).then((register) => {
+            // use native import for ESM modules
+            if (isEsm) {
+              return import(/* @vite-ignore */ url).then((m) => [
+                [],
+                (_export) => (_export(m), {}),
+              ]);
+            }
+
+            // default to using SystemJS for non ESM modules (likely the system type)
+            return register;
+          });
+        };
+      })(typeof self !== "undefined" ? self : global);
+    </script>
+    <script type="module">
+      System.import("@nutrien/root-config");
+    </script>
+  </body>
+</html>
